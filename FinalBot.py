@@ -1,13 +1,11 @@
 import re,praw, pprint, time, importlib, threading
-from telegram.ext import Updater                    #uses python-telegram-API
+from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
 import telegram.ext
 import Matches #Matches.Matches is list of matches, filename=Matches.py
 from AuthenticationInfo import *
-#AuthenticationInfo.py file contains attributes named:
-#username, password, client_ID, secret           for Reddit PRAW API
-#and TelegramToken for telegram API
+
 
 
 import logging
