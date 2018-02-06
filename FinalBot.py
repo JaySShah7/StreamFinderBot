@@ -179,7 +179,7 @@ def UpdateDatabase():
 #GetMatches()          #Update or create database, now done in thread                               
 
 
-updater=Updater(token=TelegramToken)
+updater=Updater(token=TelegramToken)                #ensure internet connection before starting program
 dispatcher=updater.dispatcher
 #print("Telegram bot connected.")
 logger.info('Telegram bot connected.')
