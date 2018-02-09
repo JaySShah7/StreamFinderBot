@@ -1,13 +1,20 @@
 import re,praw, pprint, time, importlib, threading
-from telegram.ext import Updater                    #uses python-telegram-API
+from telegram.ext import Updater 
 from telegram.ext import CommandHandler
-from telegram.ext import MessageHandler
+from telegram.ext import MessageHandler, InlineQueryHandler
 import telegram.ext
+from telegram import InlineQueryResultArticle, InputTextMessageContent
 import Matches #Matches.Matches is list of matches, filename=Matches.py
-from AuthenticationInfo import *
-#AuthenticationInfo.py file contains attributes named:
-#username, password, client_ID, secret           for Reddit PRAW API
-#and TelegramToken for telegram API
+
+TelegramToken='470427412:AAEgUnQPOvyAtTautp2kOjhf9VGM77tLmx0'
+
+username='MatchStreamFinderBot'
+password='password1'
+
+client_ID='eijk5OsMo0CdpA'
+secret='h2_oZPLHHrjnKVid3vVRdIgpTSA'
+
+TelegramToken='470427412:AAEgUnQPOvyAtTautp2kOjhf9VGM77tLmx0'
 
 
 import logging
@@ -162,8 +169,47 @@ def DisplayLinks(bot, update):                                                  
         bot.send_message(chat_id=update.message.chat_id, text=output)
     #print("Links sent to: "+ update.message.from_user['first_name']+' '+update.message.from_user['last_name']+' @'+update.message.from_user['username'])
 
-
-
+def inlinequery(bot, update):
+    
+    query=update.inline_query.query
+    logger.info('Inline mode activated.')
+    results=[]
+    x=0 #counter, unique id
+    for match in Matches.Matches:
+        output=''
+           
+        if query.lower() in match['MatchName'].lower(): #compares input with matchname or team name
+            
+            output+=("\n\nMatch: "+match['Teams'][0]+' vs '+match['Teams'][1]+'\n')
+            
+            output+=("Time: "+match['Time']+'\n\n\n')
+            
+            for i in range(0, min(len(match['Links']),8)):
+                
+                output+=("Stream Name: "+match['Links'][i]['Name'] +'\n')
+                output+=("Stream Link: "+match['Links'][i]['Link']+'\n\n')
+        
+            if(len(match['Links']))==0:
+                   output+='No streaming links found for this match.\n\n'
+            
+            results.append(InlineQueryResultArticle(id=x,
+                                                    title=(match['Teams'][0]+' vs '+match['Teams'][1]),
+                                                    input_message_content=InputTextMessageContent(output)))
+            x+=1
+    if results==[]:
+        output=''
+        for match in Matches.Matches:
+            output+=(match['MatchName']+'\n')
+        if output=='':
+            output+=('No matches are currently being broadcasted.')
+        output+=('\nStreaming links usually appear 30 minutes before a game.')
+        results.append(InlineQueryResultArticle(id=x,
+                                                title=('Team not found. Click for list of matches.'),
+                                                input_message_content=InputTextMessageContent(output)))
+                    
+    
+    update.inline_query.answer(results)
+    
 def UpdateDatabase():
     while True:
         try:
@@ -179,7 +225,7 @@ def UpdateDatabase():
 #GetMatches()          #Update or create database, now done in thread                               
 
 
-updater=Updater(token=TelegramToken)                #ensure internet connection before starting program
+updater=Updater(token=TelegramToken)
 dispatcher=updater.dispatcher
 #print("Telegram bot connected.")
 logger.info('Telegram bot connected.')
@@ -196,7 +242,8 @@ dispatcher.add_handler(findstream_handler)
 displaylink_handler=MessageHandler(telegram.ext.Filters.text, DisplayLinks)  
 dispatcher.add_handler(displaylink_handler)
 
-
+inline_handler=InlineQueryHandler(inlinequery)
+dispatcher.add_handler(inline_handler)
 
 updater.start_polling()
 t1=threading.Thread(target=UpdateDatabase)               #thread to update every 10 min
