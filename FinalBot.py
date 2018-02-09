@@ -135,7 +135,7 @@ def FindStream(bot, update):                                                    
         MatchNames.append([button])
         
     MatchKeyboard=MatchNames
-    reply_markup=telegram.ReplyKeyboardMarkup(MatchKeyboard, True, True)
+    reply_markup=telegram.ReplyKeyboardMarkup(MatchKeyboard, True, one_time_keyboard=True)
     bot.send_message(chat_id=update.message.chat_id, text='Select a match: ', reply_markup=reply_markup)
     #print('Match Option Keyboard sent to: '+ update.message.from_user['first_name']+' '+update.message.from_user['last_name']+' @'+update.message.from_user['username'])
     
@@ -169,7 +169,7 @@ def DisplayLinks(bot, update):                                                  
         bot.send_message(chat_id=update.message.chat_id, text=output)
     #print("Links sent to: "+ update.message.from_user['first_name']+' '+update.message.from_user['last_name']+' @'+update.message.from_user['username'])
 
-def inlinequery(bot, update):
+def InlineQuery(bot, update):
     
     query=update.inline_query.query
     logger.info('Inline mode activated.')
@@ -242,7 +242,7 @@ dispatcher.add_handler(findstream_handler)
 displaylink_handler=MessageHandler(telegram.ext.Filters.text, DisplayLinks)  
 dispatcher.add_handler(displaylink_handler)
 
-inline_handler=InlineQueryHandler(inlinequery)
+inline_handler=InlineQueryHandler(InlineQuery)
 dispatcher.add_handler(inline_handler)
 
 updater.start_polling()
