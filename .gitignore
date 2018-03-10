@@ -1,3 +1,5 @@
 AuthenticationInfo.py
 TelegramBotLog.log
 TelegramBotLog.log.1
+
+__pycache__/
