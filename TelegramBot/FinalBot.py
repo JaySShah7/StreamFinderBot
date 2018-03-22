@@ -1,20 +1,17 @@
-import re,praw, pprint, time, importlib, threading
+import re,praw, pprint, time, importlib, threading, os, sys
 from telegram.ext import Updater 
 from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler, InlineQueryHandler
 import telegram.ext
 from telegram import InlineQueryResultArticle, InputTextMessageContent
 import Matches #Matches.Matches is list of matches, filename=Matches.py
+from AuthenticationInfo import *
+#change cwd
 
-TelegramToken='470427412:AAEgUnQPOvyAtTautp2kOjhf9VGM77tLmx0'
 
-username='MatchStreamFinderBot'
-password='password1'
+os.chdir(sys.path[0])
 
-client_ID='eijk5OsMo0CdpA'
-secret='h2_oZPLHHrjnKVid3vVRdIgpTSA'
 
-TelegramToken='470427412:AAEgUnQPOvyAtTautp2kOjhf9VGM77tLmx0'
 
 
 import logging
@@ -28,6 +25,7 @@ logger.setLevel(logging.INFO)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
+logger.info("Program started.")
 
 def FindMatchInfo(title):                           #Regex search for post title
                                                     #regex groups: timewithbrackets, time, team1 , vs, team2
