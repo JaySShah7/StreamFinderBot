@@ -1,6 +1,10 @@
-# This python bot is now broken, due to the ban of the soccerstreams subreddit!
-## The code is available for you to browse through. ##
+# Welcome to the StreamFinderBot
+_`@StreamFinderBot` on Telegram_
 
-# StreamFinderBot
+## StreamFinderBot
+A program which scrapes a soccer streams site and uses the python-telegram-api to make a Telegram bot to give stream links for football (soccer) games.
 
-A telegram bot which finds matches of football streams. Uses the PRAW reddit API wrapper to get links from the /r/soccerstreams subreddit, and uses the python-telegram-api for the functionality of the bot.
+Visit the [wiki](https://github.com/JaySShah7/StreamFinderBot/wiki) for more information.
+
+### Disclaimer
+This bot does not host any streams, and the streams provided are the responsibility of the website owners.
