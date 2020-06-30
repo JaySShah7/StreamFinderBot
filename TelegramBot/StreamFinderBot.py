@@ -228,12 +228,13 @@ class StreamFinder:
                                                         title=(match['game']),
                                                         input_message_content=InputTextMessageContent(output)))
                 x += 1
-            if results == []:
-                output += ('No matches are currently being broadcasted.')
-                output += ('\nStreaming links usually appear 30 minutes before a game.')
-                results.append(InlineQueryResultArticle(id=x,
-                                                        title=('No matches are currently being broadcasted.'),
-                                                        input_message_content=InputTextMessageContent(output)))
+        if results == []:
+            output = ''
+            output += ('No matches are currently being broadcasted.')
+            output += ('\nStreaming links usually appear 30 minutes before a game.')
+            results.append(InlineQueryResultArticle(id=x,
+                                                    title=('No matches are currently being broadcasted.'),
+                                                    input_message_content=InputTextMessageContent(output)))
 
         update.inline_query.answer(results)
 
