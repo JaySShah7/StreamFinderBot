@@ -4,9 +4,10 @@ import threading
 import time
 from datetime import datetime, timedelta
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import pickle, os, sys, platform
 
+import pickle, os, sys, platform
+import requests, json
+from bs4 import BeautifulSoup
 #to make sure aux files end up in the same directory
 os.chdir(sys.path[0])
 
@@ -29,7 +30,7 @@ logger.addHandler(handler)
 from AuthenticationInfo import *
 
 # how much to wait between database updates
-UPDATE_FREQUENCY = 1 #in minutes
+UPDATE_FREQUENCY = 10 #in minutes
 
 #if the league contains this word, it will be added to database (does not have to be a league name, can be a team name)
 TEAM_LIST = ['manchester', 'liverpool', 'leicester', 'chelsea', 'wolve', 'arsenal', 'tottenham', 'burnley',
@@ -51,27 +52,6 @@ class StreamFinder:
         self.game_list = game_list
         self.hits = 0
 
-        if OS == 'Windows':
-            self.chromeoptions = webdriver.ChromeOptions()
-            #self.chromeoptions.add_argument("headless")
-            self.chromeoptions.add_argument("--window-size=1920,1080")
-            self.chromeoptions.add_argument('--no-proxy-server')
-            self.chromeoptions.add_argument("--proxy-server='direct://'")
-            self.chromeoptions.add_argument('--proxy-bypass-list=*')
-            self.chromeoptions.add_argument("user-data-dir=./cookies/")
-            #self.driver = webdriver.Chrome('./chromedriver.exe', chrome_options=self.chromeoptions)
-
-        if OS == 'Linux':
-            self.chromeoptions = webdriver.ChromeOptions()
-            self.chromeoptions.add_argument('--no-sandbox')
-            self.chromeoptions.add_argument('headless')
-            self.chromeoptions.add_argument('--disable-dev-shm-usage')
-            self.chromeoptions.add_argument("--window-size=1920,1080")
-            self.chromeoptions.add_argument('--no-proxy-server')
-            self.chromeoptions.add_argument("--proxy-server='direct://'")
-            self.chromeoptions.add_argument('--proxy-bypass-list=*')
-            self.chromeoptions.add_argument("user-data-dir=./cookies/")
-            #self.driver = webdriver.Chrome(executable_path='/usr/bin/chromedriver', chrome_options=self.chromeoptions)
 
     def calculate_time_difference(self, game_time, current_time = str(datetime.now().hour) + ":" + str(datetime.now().minute)):
         try:
@@ -88,101 +68,90 @@ class StreamFinder:
 
     #returns list of streams from individual match page
     def get_links_from_site(self, url):
+        logger.debug("get_links_from_site started")
+        links = []
+        #try a max of 5 times if fail
+        for i in range(5):
+            try:
+                r = requests.get(url, timeout = 15)
+                logger.debug("Loaded links site for single game")
+                links = []
+                soup = BeautifulSoup(r.content, 'html.parser')
+                logger.debug("loaded single game contents in beautifulsoup")
+                break
 
-        # #for windows, need chromedriver.exe in same directory
-        # if OS == 'Windows':
-        #     options = webdriver.ChromeOptions()
-        #     options.add_argument('headless')
-        #     driver2 = webdriver.Chrome('./chromedriver.exe', chrome_options=options)
-        #
-        # if OS == 'Linux':
-        #     options = webdriver.ChromeOptions()
-        #     options.add_argument('--no-sandbox')
-        #     options.add_argument('headless')
-        #     options.add_argument('--disable-dev-shm-usage')
-        #     driver2 = webdriver.Chrome(executable_path='/usr/bin/chromedriver', chrome_options=options)
+            except Exception as e:
+                logger.error("Could not get links for single game. Try number: " + str(i+1))
+                logger.error(e)
+                time.sleep(10)
 
-        try:
-            logger.debug("Trying to open URL for one match")
-            self.driver.get(url)
-            logger.debug("Opened URL for one match")
-            links = []
-            #print(driver2.find_elements_by_class_name("stream-info"))
-            i = 0
-            for row in self.driver.find_elements_by_class_name("stream-info"):
-                #limit to 10 links per message
-                if i < 12:
-                    link = (row.get_attribute("href"))
-                    link_name = row.find_element_by_class_name("first").text
-                    links.append({"name": link_name, "link": link})
-                    i += 1
-            #driver2.close()
+        raw_stream_list = soup.findAll('div',
+                                       attrs={'class': 'stream-item'})
+        len_raw_stream_list = len(raw_stream_list)
+        logger.debug("got stream list from beautiful soup object")
 
-            if links == []:
-                links.append({"name": "Highlights link", "link" : url})
-        except Exception as e:
-            logger.error("Could not get info from URL of one match")
-            logger.error(e)
-            links.append({"name": "You can find links here", "link" : url})
-            #driver2.close()
+        # retrieve a maximum of 10 links
+        for i in range(len_raw_stream_list if (len_raw_stream_list < 10) else 10):
+            stream = raw_stream_list[i]
+            link = stream.a['href']
+            stream_name = stream.find('span', attrs={'class': 'stream-link'}).text
+            links.append({'name': stream_name,
+                          'link': link})
+
         return links
 
 
 
     def get_stream_info(self):
-        if OS == 'Windows':
-            self.driver = webdriver.Chrome(executable_path='./chromedriver.exe', chrome_options=self.chromeoptions)
-        if OS == 'Linux':
-            self.driver = webdriver.Chrome(executable_path='/usr/bin/chromedriver', chrome_options=self.chromeoptions)
-        self.driver.implicitly_wait(5)
-        logger.debug("Chrome opened")
-        url = "https://reddits.soccerstreams.net/home"
         streams = []
-        self.driver.get(url)
-        logger.debug("Main URL loaded")
-
-        # COMMENTED CODE BELOW HAS BEEN DEPRECATED
-        #find all leagues
-        # leagues = driver.find_elements_by_class_name("top-tournament")
-        # for league in leagues:
-        #     #only select leagues in our list
-        #     if any(word in league.text.lower() for word in LEAGUE_LIST):
-        #         games = league.find_elements_by_class_name('competition')
-        #         logger.debug("Went through main page")
-
-
-        games = self.driver.find_elements_by_class_name('competition')
-
-        for single_game in games:
-            #Check if the team is in the team list
-            if any(word in single_game.text.lower() for word in TEAM_LIST):
-            #check is there are current streams available from the main page itself, only proceed if there are
-                status = single_game.find_element_by_class_name("competition-cell-status-name")
-                if status.text:
-
-                    names = single_game.find_elements_by_class_name("name")
-                    name1, name2 = names[0].text, names[1].text
-                    game_time = single_game.find_element_by_class_name("competition-cell-status").text
-
-                    link = status.find_element_by_tag_name('a').get_attribute('href')
-                    #if game_time not in ("CANCELED", "CANCELLED", "FULL TIME") and self.calculate_time_difference(game_time) < 2:
-                    #above if statement is no longer needed as we only browse for matches with links
-                    streams.append({'game': name1 + " vs " + name2,
-                                    'time': game_time,
-                                    'links': link})
-                    logger.debug("Got info for one match")
-
-        #driver.close()
-
-        for row in streams:
+        day = "{:02d}".format(datetime.now().day)
+        month = "{:02d}".format(datetime.now().month)
+        url = "https://darsh.sportsvideo.net/new-api/matches?timeZone=-330&date=2020-" + month + "-" + day
+        #try a max of 4 times
+        for i in range(5):
             try:
-                row['links'] = self.get_links_from_site(row['links'])
+                re = requests.get(url, timeout = 15)
+                logger.debug('Loaded main page')
+                raw_dict = json.loads(re.text)
+                logger.debug('Loaded dict from main page json')
+                break
             except Exception as e:
-                row['links'] = [{'name':'List of Links', 'link': row['links']}]
-                logger.error("Could not add stream links to stream list.")
+                logger.error("Could not parse main mage. Try: " + str(i+1))
                 logger.error(e)
+                time.sleep(10)
+                if i == 4:
+                    raise Exception("Max values reached. requests.get failed")
 
-        self.driver.close()
+        for league in raw_dict:
+            for single_game in league['events']:
+
+                game_name = single_game['homeTeam']['name'] + " vs " + single_game['awayTeam']['name']
+                game_id = str(single_game['id'])
+                links_link = "https://101placeonline.com/streams-table/" + game_id + "/soccer"
+                # Check if game has team in our list
+                if any(word in game_name.lower() for word in TEAM_LIST):
+                    logger.debug("Found game: " + game_name)
+                    #print(game_name)
+
+                    # check if highlights are available
+                    if single_game['status']['type'] == 'finished':
+                        logger.debug("Game is finished, getting highlights")
+                        if single_game['hasHighlights']:
+                            streams.append({'game': game_name,
+                                            'time': "FULL TIME",
+                                            'links': [{'link': single_game['eventLink'],
+                                                       'name': 'HIGHLIGHTS'}]})
+                    #check if stream is available, and set the time accordingly
+                    elif single_game['hasStreams']:
+                        logger.debug("Game has streams, appending list")
+                        if single_game['status']['type'] == 'inprogress':
+                            game_time = str(single_game['minute']) + "'"
+                        else:
+                            game_time = datetime.fromtimestamp(single_game['startTimestamp']).strftime("%H:%M")
+
+                        streams.append({'links': self.get_links_from_site(links_link),
+                                        'game': game_name,
+                                        'time': game_time})
 
         return streams
 
@@ -209,7 +178,7 @@ class StreamFinder:
                     output += ("Stream Link: " + match['links'][i]['link'] + '\n\n')
                 #In case no streams found
                 if (len(match['links'])) == 0:
-                    output += 'No streaming links found for this match.\n\n'
+                    output += 'No streaming links found for this match.\n\nMatch links usually appear 30 minutes before a match.'
 
         if output == '':
             context.bot.send_message(chat_id=update.effective_chat.id,
@@ -314,7 +283,6 @@ class StreamFinder:
 
                     saved_dict['month'] = datetime.now()
                     saved_dict['month_hits'] = 0
-
 
 
                 with open("stats.pickle", 'wb') as f:
