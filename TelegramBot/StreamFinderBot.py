@@ -23,7 +23,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 logger=logging.getLogger(__name__)
 handler=RotatingFileHandler('BotLog.log', maxBytes=100000, backupCount=1)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
