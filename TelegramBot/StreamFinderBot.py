@@ -39,7 +39,7 @@ TEAM_LIST = ['manchester', 'liverpool', 'leicester', 'chelsea', 'wolve', 'arsena
              'bayern', 'borussia', 'leipzig', 'dortmund',
              'milan', 'inter', 'juventus', 'napoli', 'roma',
              'psg', 'paris', 'monaco', 'lyon',
-             'barcelona', 'madrid', 'sevilla',
+             'barcelona', 'madrid', 'sevilla', 'brentford'
              ]
 OS = platform.system()
 
@@ -94,7 +94,7 @@ class StreamFinder:
         for i in range(len_raw_stream_list if (len_raw_stream_list < 10) else 10):
             stream = raw_stream_list[i]
             link = stream.a['href']
-            stream_name = stream.find('span', attrs={'class': 'stream-link'}).text
+            stream_name = stream.find('span', attrs={'class': 'first'}).text
             links.append({'name': stream_name,
                           'link': link})
 
@@ -102,10 +102,9 @@ class StreamFinder:
 
 
 
-    def get_stream_info(self):
+
+    def get_stream_info(self, day = "{:02d}".format(datetime.now().day), month = "{:02d}".format(datetime.now().month)):
         streams = []
-        day = "{:02d}".format(datetime.now().day)
-        month = "{:02d}".format(datetime.now().month)
         url = "https://darsh.sportsvideo.net/new-api/matches?timeZone=-330&date=2020-" + month + "-" + day
         #try a max of 4 times
         for i in range(5):
@@ -273,9 +272,10 @@ class StreamFinder:
                         saved_dict = pickle.load(f)
                 except Exception as e:
                     logger.error("Could not read from stats.pickle.")
+                    logger.error(e)
                     saved_dict = {}
 
-                    saved_dict['day'] = datetime.now()
+                    saved_dict['day'] = datetime.now().day
                     saved_dict['day_hits'] = 0
 
                     saved_dict['week'] = datetime.now()
@@ -287,16 +287,21 @@ class StreamFinder:
 
                 with open("stats.pickle", 'wb') as f:
 
-                    if datetime.now() - saved_dict['week']  > timedelta(days=7):
+                    if datetime.now() - saved_dict['week'] >= timedelta(days=7):
                         saved_dict['week_hits'] = self.hits
+                        saved_dict['week'] = datetime.now()
                     else:
                         saved_dict['week_hits'] += self.hits
+
                     if datetime.now() - saved_dict['month'] > timedelta(days=30):
                         saved_dict['month_hits'] = self.hits
+                        saved_dict['month'] = datetime.now()
                     else:
                         saved_dict['month_hits'] += self.hits
-                    if datetime.now() - saved_dict['day'] > timedelta(days=1):
+
+                    if datetime.now().day != saved_dict['day']:
                         saved_dict['day_hits'] = self.hits
+                        saved_dict['day'] = datetime.now().day
                     else:
                         saved_dict['day_hits'] += self.hits
                     self.hits = 0
@@ -309,8 +314,11 @@ class StreamFinder:
 
             try:
                 logger.debug("Attempting Database Update")
+                tomorrow = datetime.now() + timedelta(days=1)
                 start_time = time.time()
                 self.game_list = finder.get_stream_info()
+                self.game_list+= finder.get_stream_info(day="{:02d}".format(tomorrow.day),
+                                                             month="{:02d}".format(tomorrow.month))
                 logger.info("Time taken to update database: " + str((time.time() - start_time)/60))
                 logger.info("Database updated.")
             except Exception as e:
