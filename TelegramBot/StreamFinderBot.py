@@ -30,7 +30,7 @@ logger.addHandler(handler)
 from AuthenticationInfo import *
 
 # how much to wait between database updates
-UPDATE_FREQUENCY = 10 #in minutes
+UPDATE_FREQUENCY = 5 #in minutes
 
 #if the league contains this word, it will be added to database (does not have to be a league name, can be a team name)
 TEAM_LIST = ['manchester', 'liverpool', 'leicester', 'chelsea', 'wolve', 'arsenal', 'tottenham', 'burnley',
@@ -314,11 +314,24 @@ class StreamFinder:
 
             try:
                 logger.debug("Attempting Database Update")
-                tomorrow = datetime.now() + timedelta(days=1)
+                tomorrow = datetime.now() + timedelta(hours=5)
+                yesterday = datetime.now() - timedelta(hours=5)
                 start_time = time.time()
                 self.game_list = finder.get_stream_info()
-                self.game_list+= finder.get_stream_info(day="{:02d}".format(tomorrow.day),
-                                                             month="{:02d}".format(tomorrow.month))
+                #self.game_list+= finder.get_stream_info(day="{:02d}".format(tomorrow.day),
+                #                                             month="{:02d}".format(tomorrow.month))
+                #self.game_list += finder.get_stream_info(day="{:02d}".format(yesterday.day),
+                #                                         month="{:02d}".format(yesterday.month))
+                for game in (finder.get_stream_info(day="{:02d}".format(tomorrow.day),
+                                       month="{:02d}".format(tomorrow.month))) + finder.get_stream_info(day="{:02d}".format(yesterday.day),
+                                                         month="{:02d}".format(yesterday.month)):
+                    if game['game'] not in (existing_game['game'] for existing_game in self.game_list):
+                        self.game_list.append(game)
+
+
+                temp_list = []
+                [temp_list.append(x) for x in self.game_list if x not in temp_list]
+                self.game_list = temp_list
                 logger.info("Time taken to update database: " + str((time.time() - start_time)/60))
                 logger.info("Database updated.")
             except Exception as e:
