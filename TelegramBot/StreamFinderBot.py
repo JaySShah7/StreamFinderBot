@@ -3,7 +3,7 @@
 import threading
 import time
 from datetime import datetime, timedelta
-from selenium import webdriver
+
 
 import pickle, os, sys, platform
 import requests, json
@@ -30,16 +30,16 @@ logger.addHandler(handler)
 from AuthenticationInfo import *
 
 # how much to wait between database updates
-UPDATE_FREQUENCY = 5 #in minutes
+UPDATE_FREQUENCY = 5 # in minutes
 
-#if the league contains this word, it will be added to database (does not have to be a league name, can be a team name)
+# if the league contains this word, it will be added to database (does not have to be a league name, can be a team name)
 TEAM_LIST = ['manchester', 'liverpool', 'leicester', 'chelsea', 'wolve', 'arsenal', 'tottenham', 'burnley',
              'sheffield', 'everton', 'crystal palace', 'newcastle', 'southampton', 'brighton', 'west ham',
-             'watford', 'aston villa', 'bournemouth', 'norwich',
+             'aston villa', 'bournemouth', 'norwich', 'leeds',
              'bayern', 'borussia', 'leipzig', 'dortmund',
              'milan', 'inter', 'juventus', 'napoli', 'roma',
              'psg', 'paris', 'monaco', 'lyon',
-             'barcelona', 'madrid', 'sevilla', 'brentford'
+             'barcelona', 'madrid', 'sevilla', 'brentford', 'ajax', 'forest green'
              ]
 OS = platform.system()
 
@@ -73,7 +73,8 @@ class StreamFinder:
         #try a max of 5 times if fail
         for i in range(5):
             try:
-                r = requests.get(url, timeout = 15)
+                headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+                r = requests.get(url, timeout = 15, headers = headers)
                 logger.debug("Loaded links site for single game")
                 links = []
                 soup = BeautifulSoup(r.content, 'html.parser')
@@ -103,13 +104,15 @@ class StreamFinder:
 
 
 
-    def get_stream_info(self, day = "{:02d}".format(datetime.now().day), month = "{:02d}".format(datetime.now().month)):
+    def get_stream_info(self, day = "{:02d}".format(datetime.now().day), month = "{:02d}".format(datetime.now().month),
+                        year =  "{:04d}".format(datetime.now().year)):
         streams = []
-        url = "https://darsh.sportsvideo.net/new-api/matches?timeZone=-330&date=2020-" + month + "-" + day
+        url = "https://darsh.sportsvideo.net/new-api/matches?timeZone=-330&date=" + year + "-" + month + "-" + day
         #try a max of 4 times
         for i in range(5):
             try:
-                re = requests.get(url, timeout = 15)
+                headers = {"Cache-Control": "no-cache", "Pragma": "no-cache"}
+                re = requests.get(url, timeout = 15, headers = headers)
                 logger.debug('Loaded main page')
                 raw_dict = json.loads(re.text)
                 logger.debug('Loaded dict from main page json')
@@ -317,20 +320,29 @@ class StreamFinder:
                 tomorrow = datetime.now() + timedelta(hours=5)
                 yesterday = datetime.now() - timedelta(hours=5)
                 start_time = time.time()
+
+                temp_list = finder.get_stream_info()
+                for game in (finder.get_stream_info(
+                        day="{:02d}".format(tomorrow.day),
+                        month="{:02d}".format(tomorrow.month),
+                        year ="{:04d}".format(tomorrow.year))) \
+                            + finder.get_stream_info(
+                    day="{:02d}".format(yesterday.day),
+                    month="{:02d}".format(yesterday.month),
+                    year="{:04d}".format(yesterday.year)):
+                    if game['game'] not in (existing_game['game'] for
+                                            existing_game in temp_list):
+                        temp_list.append(game)
+                '''
                 self.game_list = finder.get_stream_info()
-                #self.game_list+= finder.get_stream_info(day="{:02d}".format(tomorrow.day),
-                #                                             month="{:02d}".format(tomorrow.month))
-                #self.game_list += finder.get_stream_info(day="{:02d}".format(yesterday.day),
-                #                                         month="{:02d}".format(yesterday.month))
                 for game in (finder.get_stream_info(day="{:02d}".format(tomorrow.day),
-                                       month="{:02d}".format(tomorrow.month))) + finder.get_stream_info(day="{:02d}".format(yesterday.day),
+                                       month="{:02d}".format(tomorrow.month))) \
+                            + finder.get_stream_info(day="{:02d}".format(yesterday.day),
                                                          month="{:02d}".format(yesterday.month)):
                     if game['game'] not in (existing_game['game'] for existing_game in self.game_list):
                         self.game_list.append(game)
-
-
-                temp_list = []
-                [temp_list.append(x) for x in self.game_list if x not in temp_list]
+                # to remove later
+                '''
                 self.game_list = temp_list
                 logger.info("Time taken to update database: " + str((time.time() - start_time)/60))
                 logger.info("Database updated.")
